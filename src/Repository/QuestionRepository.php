@@ -19,17 +19,17 @@ class QuestionRepository extends ServiceEntityRepository
         parent::__construct($registry, Question::class);
     }
 
-    public function pickRandomQuestion(array $excludedIds) : Question
+    public function pickRandomQuestion(array $excludedIds): ?Question
     {
         $excludeList = implode(",", $excludedIds);
 
         $entityManager = $this->getEntityManager();
 
         $query = $entityManager->createQuery(
-            'SELECT p
+            'SELECT q
             FROM App\Entity\Question q
             WHERE q.id NOT IN (:excludeList)'
-        )->setParameter('excludeList', excludeList);
+        )->setParameter('excludeList', $excludeList);
         $questions = $query->execute();
 
         if (!$questions) {

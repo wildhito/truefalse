@@ -218,7 +218,12 @@ class Game
         $this->state = self::STATE_FINISHED;
     }
 
-    public function getNextPlayer(): bool
+    public function finished()
+    {
+        return $this->state == self::STATE_FINISHED;
+    }
+
+    public function getNextPlayer(): ?Player
     {
         $currentIndex = $this->players->indexOf($this->currentPlayer);
         if ($currentIndex >= ($this->players->count() - 1)) {

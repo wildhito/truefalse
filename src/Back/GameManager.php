@@ -3,10 +3,12 @@
 namespace App\Back;
 
 use App\Entity\Game;
-use Doctrine\ORM\EntityManager;
+use App\Entity\Question;
+use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\GameRepository;
 use App\Repository\QuestionRepository;
 use App\Back\GameException;
+use App\Entity\Player;
 
 class GameManager
 {
@@ -14,14 +16,14 @@ class GameManager
     private $gameRepo;
     private $questionRepo;
 
-    public function __construct(EntityManager $em, GameRepository $gameRepo, QuestionRepository $questionRepo)
+    public function __construct(EntityManagerInterface $em, GameRepository $gameRepo, QuestionRepository $questionRepo)
     {
         $this->em = $em;
         $this->gameRepo = $gameRepo;
         $this->questionRepo = $questionRepo;
     }
 
-    public function createGame(int $maxPoints = 10)
+    public function createGame(int $maxPoints = 10): Game
     {
         $newGame = new Game();
         $newGame->setCurrentTurn(0);
@@ -31,6 +33,8 @@ class GameManager
 
         $this->em->persist($newGame);
         $this->em->flush();
+
+        return $newGame;
     }
 
     /**
@@ -40,7 +44,7 @@ class GameManager
     {
         $game = $this->gameRepo->findOneBy([ 'reference' => $reference ]);
         if (!$game) {
-            throw new GameException("Failed to load game from repository", GameException::GAME_NOT_FOUND);
+            throw new GameException("Game not found", GameException::GAME_NOT_FOUND);
         }
         return $game;
     }
@@ -60,22 +64,13 @@ class GameManager
     /**
      * @throws GameException
      */
-    public function play(Game $game, bool $playerAnswer)
-    {
-        if (!$game->started()) {
-            $this->startToPlay();
-        } else {
-            $this->continuePlaying($game, $playerAnswer);
-        }
-    }
-
-    /**
-     * @throws GameException
-     */
-    private function startToPlay(Game $game)
+    public function start(Game $game)
     {
         if (!$game->canStart()) {
-            throw new GameException("Game cannot be started", GameException::GAME_NOT_STARTABLE);
+            throw new GameException("Game cannot be started (missing players?)", GameException::GAME_NOT_STARTABLE);
+        }
+        if ($game->started()) {
+            throw new GameException("Game already started", GameException::GAME_ALREADY_STARTED);
         }
 
         $game->start();
@@ -90,26 +85,34 @@ class GameManager
     /**
      * @throws GameException
      */
-    private function continuePlaying(Game $game, bool $playerAnswer)
+    public function play(Game $game, bool $playerAnswer): bool
     {
+        if (!$game->started()) {
+            throw new GameException("Game not started", GameException::GAME_NOT_STARTED);
+        }
+
         $playerSuccess = $this->tryAnswer($game->getCurrentQuestion(), $playerAnswer);
 
         if ($playerSuccess) {
             $player = $game->getCurrentPlayer();
             $player->incScore();
 
+            if ($player->getScore() >= $game->getMaxPoints()) {
+                $game->finish();
+            }
+
             $this->em->persist($player);
             $this->em->flush();
         }
 
-        if ($player->getScore() >= $game->getMaxPoints()) {
-            $game->finish();
-        } else {
+        if (!$game->finished()) {
             $this->nextQuestion($game);
         }
 
         $this->em->persist($game);
         $this->em->flush();
+
+        return $playerSuccess;
     }
 
     /**
@@ -123,7 +126,7 @@ class GameManager
     /**
      * @throws GameException
      */
-    private function nextQuestion(Game $game): bool
+    private function nextQuestion(Game $game)
     {
         if (($nextPlayer = $game->getNextPlayer()) !== null) {
             $game->setCurrentPlayer($nextPlayer);

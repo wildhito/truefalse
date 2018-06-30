@@ -58,5 +58,11 @@ class DumpCommand extends Command
             ]);
         }
 
+        if ($game->getCurrentQuestion()) {
+            $output->writeln([
+                'Current question: ' . $game->getCurrentQuestion()->getQuestion(),
+            ]);
+        }
+
     }
 }

@@ -32,6 +32,17 @@ class RegisterQuestionCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $handle = fopen("inputfile.txt", "r");
+        if ($handle) {
+            while (($line = fgets($handle)) !== false) {
+                // process the line read.
+            }
+
+            fclose($handle);
+        } else {
+            // error opening the file.
+        }
+
         $question = $input->getArgument('question');
         $answer = in_array(
             strtolower($input->getArgument('answer')),

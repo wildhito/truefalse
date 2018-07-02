@@ -18,13 +18,14 @@ class WebhookController extends Controller
 	}
 
     /**
-     * @Route("/webhook/{action}", name="webhook")
+     * @Route("/webhook")
+     * @Route("/webhook/")
      */
-    public function index(Request $request, $action)
+    public function index(Request $request)
     {
     	$payload = json_decode($request->getContent(), true);
 
-    	switch ($action) {
+    	switch ($payload["queryResult"]["intent"]["displayName"]) {
 			case "create-game":
 				$response = $this->createGame($payload);
 			break;
@@ -57,6 +58,8 @@ class WebhookController extends Controller
     			],
     		],
     		"fulfillmentText" => "Merci. Veuillez ajouter des joueurs.",
+            "source" => "webhook",
+            "fulfillmentMessages" => [],
     	];
     }
 }
